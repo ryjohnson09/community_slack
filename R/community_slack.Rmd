@@ -1,0 +1,245 @@
+---
+title: "Community Category Activity Report"
+output: html_document
+resource_files:
+- R/community-explorer.R
+- .Rprofile
+- .Renviron
+params:
+  categories:
+    label: "Select Category"
+    input: select
+    value: "R-Admin"
+    choices: [R-Admin, Tidyverse, Shiny (including shinyapps.io), RStudio Cloud, RStudio IDE, R Markdown, ML (Tidymodels & MLverse), package-development, General, R-Admin Training]
+  days_ago:
+    label: "Days Ago:"
+    input: slider
+    value: 8
+    min: 7
+    max: 371
+    step: 7
+editor_options: 
+  
+  chunk_output_type: console
+---
+
+---
+title: `r params$categories`
+---
+
+
+<style type="text/css">
+.main-container {
+max-width: 2000px;
+margin-left: auto;
+margin-right: auto;
+}
+</style>
+
+## Community Activity Report
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE)
+options(width = 2000)
+
+library(httr)
+library(readr)
+library(dplyr)
+library(jsonlite)
+library(lubridate)
+library(purrr)
+library(glue)
+library(reactable)
+
+get_category_posts <- function(
+  cat_id = 5,
+  from_day_ago = 0,
+  duration_days = 8
+){
+  
+  post_req <- httr::POST(
+    url = "https://community.rstudio.com/admin/plugins/explorer/queries/21/run.csv",
+    body = list(
+      # 'params'='{"cat_id":"10","from_day_ago":"0","duration_days":"7"}'
+      'params'=glue('{{"cat_id":"{cat_id}","from_day_ago":"{from_day_ago}","duration_days":"{duration_days}"}}')
+    ),
+    add_headers(
+      .headers = c(
+        "Content-Type" = "multipart/form-data;",
+        "Api-Key" = Sys.getenv("COMM_API_KEY"),
+        "Api-Username" = Sys.getenv("COMM_API_USR"))
+    ),
+    verbose()
+  )
+  stop_for_status(post_req)
+  mydata <- rawToChar(post_req$content) %>% read_csv() %>% 
+    mutate(
+      topic_id = as.numeric(topic_id),
+      category_id = as.numeric(category_id),
+      views = as.numeric(views),
+      posts_count = as.numeric(posts_count),
+      reply_count = as.numeric(reply_count),
+      like_count = as.numeric(like_count),
+      incoming_link_count = as.numeric(incoming_link_count),
+      score = as.numeric(score),
+      word_count = as.numeric(word_count),
+    )
+  
+  return(mydata)
+}
+
+category_df <- tribble(
+  ~choice, ~cat_ids, ~category,   
+  "R-Admin",  5, "R-Admin",
+  "Tidyverse",  6, "Tidyverse",
+  "Shiny (including shinyapps.io)",  8, "Shiny",
+  "RStudio IDE", 9, "RStudio IDE",
+  "R Markdown", 10, "R Markdown",
+  "package-development", 11, "package-development",
+  "Teaching", 13, "Teaching",
+  "RStudio Cloud", 14,"RStudio Cloud",
+  "ML (Tidymodels & MLverse)" , 15,"ML",
+  "General", 17,"General",
+  "R-Admin", 21,"R-Admin Package Management",
+  "Shiny (including shinyapps.io)",24,"shinyapps.io",
+  "R-Admin",27,"R-Admin Connect",
+  "R-Admin Training", 12, "R-Admin Training"
+)
+
+```
+
+
+```{r, results = "asis"}
+categorys <- category_df %>% 
+  filter(choice == params$categories)
+
+text_summary = ""
+result <- tibble()
+for (i in categorys$cat_ids){
+  
+  section <-     get_category_posts(
+    cat_id = i,
+    from_day_ago = 0,
+    duration_days = params$days_ago
+  )
+  
+  result <- bind_rows(
+    result,
+    section
+  )
+  
+  text_summary <- paste(
+    text_summary,
+    
+    glue(
+      "- **{(category_df %>% filter(cat_ids == i))$category}** - {nrow(section)} new topics -",
+      " {(section$posts_count == 0) %>% sum} with no response - ",
+      "{is.na(section$sol_at) %>% sum} ({((is.na(section$sol_at) %>% sum)/(nrow(section))*100) %>% round(0)}%) unsolved<br>
+
+")
+
+
+  )
+  
+}
+
+
+```
+
+### Previous  `r params$days_ago` days
+
+Run on `r format(Sys.time(), '%Y-%m-%d')`. From `r Sys.Date()-0-params$days_ago` to `r Sys.Date()-0`.
+
+
+
+`r glue("**{params$categories}** - {nrow(result)} new topics -",
+" {(result$posts_count == 0) %>% sum} with no response - ",
+"{((is.na(section$sol_at) %>% sum)/(nrow(section))*100) %>% round(0)}% unsolved  <br>")`
+
+
+```{r, results = "asis"}
+
+if (length(result$category_id %>% unique) > 1){
+  cat(text_summary)
+}
+
+
+```
+
+
+```{r}
+result <- result %>% 
+  mutate(
+    Solved = if_else(is.na(sol_at),"❌","✅"),
+    created_at = lubridate::ymd_hms(created_at) %>% strftime(format = "%Y-%m-%d %H:%M"),
+    updated_at = lubridate::ymd_hms(updated_at) %>% strftime(format = "%Y-%m-%d %H:%M"),
+    sol_at = lubridate::ymd_hms(sol_at) %>% strftime(format = "%Y-%m-%d %H:%M")
+  ) %>% 
+  arrange(created_at)
+
+reactable::reactable(
+  result %>% 
+    select(
+      Solved,
+      title, 
+      "Created At" = created_at, 
+      "Updated At" = updated_at, 
+      # "Category ID" = category_id, 
+      Category = category, 
+      "👁" = views, 
+      "Post Count" = posts_count, 
+      "Reply Count" = reply_count, 
+      "❤" = like_count, 
+      # "Incoming Link Count" = incoming_link_count, 
+      # Score = score, 
+      "Word Count" = word_count, 
+      Tags = tags, 
+      "Solved At" = sol_at, 
+      Solver = sol_user_id, 
+      "Solution" = sol_post_id
+    ),
+  columns = list(
+    Solved = colDef(maxWidth = 80,align = "center"),
+    title =  colDef(
+      name = "Title",
+      minWidth = 300,
+      cell = function(value, index) {
+        # Render as a link
+        url <- sprintf("https://community.rstudio.com/t/%s", result[index, "topic_id"])
+        htmltools::tags$a(href = url, target = "_blank", as.character(value))
+      }),
+    Category = colDef(
+      cell = function(value, index) {
+        # Render as a link
+        url <- sprintf("https://community.rstudio.com/c/%s", result[index, "category_id"])
+        htmltools::tags$a(href = url, target = "_blank", as.character(value))
+      }),
+    Solution =  colDef(
+      cell = function(value, index) {
+        # Render as a link
+        if (is.na(result[index, "sol_post_id"])){
+          ""
+        } else {
+          url <- sprintf("https://community.rstudio.com/p/%s", result[index, "sol_post_id"])
+          htmltools::tags$a(href = url, target = "_blank", as.character(value))  
+        }
+      }),
+    `👁` =  colDef(maxWidth = 80,align = "center"),
+    `Post Count` =  colDef(maxWidth = 80,align = "center"), 
+    `Reply Count` =  colDef(maxWidth = 80,align = "center"), 
+    `❤` = colDef(maxWidth = 80,align = "center"),
+    # "Incoming Link Count" = incoming_link_count, 
+    # Score = score, 
+    `Word Count` =  colDef(maxWidth = 80,align = "center")
+  ),
+  defaultPageSize = 100,
+  showPageSizeOptions = TRUE,
+  pageSizeOptions = c(10, 20, 50, 100),
+  resizable = TRUE
+)
+
+
+```
