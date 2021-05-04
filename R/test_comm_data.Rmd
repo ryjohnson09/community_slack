@@ -9,8 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 library(httr)
-library(readr)
-library(dplyr)
+library(tidyverse)
 library(jsonlite)
 library(lubridate)
 library(purrr)
@@ -58,7 +57,9 @@ get_category_posts <- function(
       sol_post_id = as.numeric(sol_post_id),
       image_upload_id = as.numeric(image_upload_id),
       upload_id = as.numeric(upload_id)
-    )
+    ) %>% 
+    select(-url) %>% 
+    unique()
   
   return(mydata)
 }
@@ -106,6 +107,29 @@ post_comm <- function(cat_id,
   num_no_response <- (cat_posts$posts_count == 0) %>% sum()
   num_unsolved <- is.na(cat_posts$sol_at) %>% sum()
   
+  # Create post urls
+  base_url <- "https://community.rstudio.com/t/"
+  
+  post_urls <- cat_posts %>% 
+    mutate(sol_at_emoji = case_when(
+      !is.na(sol_at) ~ ":white_check_mark:",
+      is.na(sol_at) ~ ":x:"
+    )) %>% 
+  mutate(sol_at_emoji = case_when(
+    !is.na(sol_at) ~ ":white_check_mark:",
+    is.na(sol_at) ~ ":x:"
+  )) %>% 
+  mutate(sol_link = paste0(sol_at_emoji, " ", 
+                           "<https://community.rstudio.com/t/",
+                           topic_id, "|",
+                           title, ">\n")) %>% 
+  pull(sol_link)
+  # Clean up title names
+  post_urls_c <- paste0(post_urls, collapse = "")
+  post_urls_cc <- gsub('[\"]', '', post_urls_c)
+  
+
+  
   # Generate slack post
   slack_message <- glue(
     '{
@@ -124,6 +148,15 @@ post_comm <- function(cat_id,
 				"type": "mrkdwn",
 				"text": "*--num_new_posts--* new posts.\n*--num_no_response--* had no responses.\n*--num_unsolved--* remain unsolved."
 			}
+		},
+	{
+			"type": "context",
+			"elements": [
+				{
+					"type": "mrkdwn",
+					"text": "--post_urls_cc--"
+				}
+			]
 		}
 	]
 }', .open = "--", .close = "--"
