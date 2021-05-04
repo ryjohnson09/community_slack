@@ -150,6 +150,9 @@ post_comm <- function(cat_id,
 			}
 		},
 	{
+			"type": "divider"
+		},
+	{
 			"type": "context",
 			"elements": [
 				{
