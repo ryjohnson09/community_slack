@@ -104,7 +104,7 @@ post_comm <- function(cat_id,
   # Extract Variables
   num_new_posts <- nrow(cat_posts)
   cat_name <- (category_df %>% filter(cat_ids == cat_id))$category
-  num_no_response <- (cat_posts$posts_count == 0) %>% sum()
+  num_no_response <- (cat_posts$reply_count == 0) %>% sum()
   num_unsolved <- is.na(cat_posts$sol_at) %>% sum()
   
   # Create post urls
@@ -138,7 +138,7 @@ post_comm <- function(cat_id,
 			"type": "header",
 			"text": {
 				"type": "plain_text",
-				"text": "Last Week\'s Community Posts for --cat_name--",
+				"text": "Recent Community Posts for --cat_name--",
 				"emoji": true
 			}
 		},
@@ -165,7 +165,7 @@ post_comm <- function(cat_id,
   # Post to slack
   POST(url = slack_channel_webhook, encode = "form",
        add_headers(`Content-Type` = "application/json"), 
-       body = slack_message)
+       body = slack_message, verbose())
 }
 ```
 
@@ -174,7 +174,7 @@ post_comm <- function(cat_id,
 # Test post
 post_comm(cat_id = 6,
           from_day_ago = 0, 
-          duration_days = 7,
+          duration_days = 3,
           slack_channel_webhook = Sys.getenv("TEST_WH"))
 
 ```
