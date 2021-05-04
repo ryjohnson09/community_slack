@@ -1,0 +1,150 @@
+---
+title: "test_comm_data"
+author: "Ryan Johnson"
+date: "5/3/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(httr)
+library(readr)
+library(dplyr)
+library(jsonlite)
+library(lubridate)
+library(purrr)
+library(glue)
+```
+
+
+# Data/Function Setup
+
+## Get posts function
+```{r}
+get_category_posts <- function(
+  cat_id = 5,
+  from_day_ago = 0,
+  duration_days = 8
+){
+  
+  post_req <- httr::POST(
+    url = "https://community.rstudio.com/admin/plugins/explorer/queries/21/run.csv",
+    body = list(
+      # 'params'='{"cat_id":"10","from_day_ago":"0","duration_days":"7"}'
+      'params'=glue('{{"cat_id":"{cat_id}","from_day_ago":"{from_day_ago}","duration_days":"{duration_days}"}}')
+    ),
+    add_headers(
+      .headers = c(
+        "Content-Type" = "multipart/form-data;",
+        "Api-Key" = Sys.getenv("COMM_API_KEY"),
+        "Api-Username" = Sys.getenv("COMM_API_USR"))
+    ),
+    verbose()
+  )
+  stop_for_status(post_req)
+  mydata <- rawToChar(post_req$content) %>% read_csv() %>% 
+    mutate(
+      topic_id = as.numeric(topic_id),
+      category_id = as.numeric(category_id),
+      views = as.numeric(views),
+      posts_count = as.numeric(posts_count),
+      reply_count = as.numeric(reply_count),
+      like_count = as.numeric(like_count),
+      incoming_link_count = as.numeric(incoming_link_count),
+      score = as.numeric(score),
+      word_count = as.numeric(word_count),
+      sol_user_id = as.numeric(sol_user_id),
+      sol_post_id = as.numeric(sol_post_id),
+      image_upload_id = as.numeric(image_upload_id),
+      upload_id = as.numeric(upload_id)
+    )
+  
+  return(mydata)
+}
+```
+
+## Create category ID data frame
+```{r}
+category_df <- tribble(
+  ~choice, ~cat_ids, ~category,   
+  "R-Admin",  5, "R-Admin",
+  "Tidyverse",  6, "Tidyverse",
+  "Shiny (including shinyapps.io)",  8, "Shiny",
+  "RStudio IDE", 9, "RStudio IDE",
+  "R Markdown", 10, "R Markdown",
+  "package-development", 11, "package-development",
+  "Teaching", 13, "Teaching",
+  "RStudio Cloud", 14,"RStudio Cloud",
+  "ML (Tidymodels & MLverse)" , 15,"ML",
+  "General", 17,"General",
+  "R-Admin", 21,"R-Admin Package Management",
+  "Shiny (including shinyapps.io)",24,"shinyapps.io",
+  "R-Admin",27,"R-Admin Connect",
+  "R-Admin Training", 12, "R-Admin Training"
+)
+```
+
+
+# Pull and Post Results per Category
+
+```{r function}
+post_comm <- function(cat_id,
+                      from_day_ago = 0,
+                      duration_days = 7,
+                      slack_channel_webhook){
+  # Get category posts
+  cat_posts <- get_category_posts(
+    cat_id = cat_id,
+    from_day_ago = from_day_ago,
+    duration_days = duration_days
+  )
+  
+  # Extract Variables
+  num_new_posts <- nrow(cat_posts)
+  cat_name <- (category_df %>% filter(cat_ids == cat_id))$category
+  num_no_response <- (cat_posts$posts_count == 0) %>% sum()
+  num_unsolved <- is.na(cat_posts$sol_at) %>% sum()
+  
+  # Generate slack post
+  slack_message <- glue(
+    '{
+	"blocks": [
+		{
+			"type": "header",
+			"text": {
+				"type": "plain_text",
+				"text": "Last Week\'s Community Posts for --cat_name--",
+				"emoji": true
+			}
+		},
+		{
+			"type": "section",
+			"text": {
+				"type": "mrkdwn",
+				"text": "*--num_new_posts--* new posts.\n*--num_no_response--* had no responses.\n*--num_unsolved--* remain unsolved."
+			}
+		}
+	]
+}', .open = "--", .close = "--"
+)
+  
+  # Post to slack
+  POST(url = slack_channel_webhook, encode = "form",
+       add_headers(`Content-Type` = "application/json"), 
+       body = slack_message)
+}
+```
+
+
+```{r}
+# Test post
+post_comm(cat_id = 6,
+          from_day_ago = 0, 
+          duration_days = 7,
+          slack_channel_webhook = Sys.getenv("TEST_WH"))
+
+```
+
+
+
