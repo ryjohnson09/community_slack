@@ -172,15 +172,115 @@ post_comm <- function(cat_id,
 }
 ```
 
-
-```{r}
-# Test post
-post_comm(cat_id = 6,
+# Customized Posts
+```{r R-Admin, message=FALSE, warning=FALSE}
+post_comm(cat_id = 5,
           from_day_ago = 0, 
-          duration_days = 3,
+          duration_days = 4,
           slack_channel_webhook = Sys.getenv("TEST_WH"))
 
 ```
 
+```{r Tidyverse, message=FALSE, warning=FALSE}
+post_comm(cat_id = 6,
+          from_day_ago = 0, 
+          duration_days = 4,
+          slack_channel_webhook = Sys.getenv("TEST_WH"))
 
+```
 
+```{r Shiny, message=FALSE, warning=FALSE}
+post_comm(cat_id = 8,
+          from_day_ago = 0, 
+          duration_days = 4,
+          slack_channel_webhook = Sys.getenv("TEST_WH"))
+
+```
+
+```{r RStudio-IDE, message=FALSE, warning=FALSE}
+post_comm(cat_id = 9,
+          from_day_ago = 0, 
+          duration_days = 4,
+          slack_channel_webhook = Sys.getenv("TEST_WH"))
+
+```
+
+```{r RMD, message=FALSE, warning=FALSE}
+post_comm(cat_id = 10,
+          from_day_ago = 0, 
+          duration_days = 4,
+          slack_channel_webhook = Sys.getenv("TEST_WH"))
+
+```
+
+```{r Package-Dev, message=FALSE, warning=FALSE}
+post_comm(cat_id = 11,
+          from_day_ago = 0, 
+          duration_days = 4,
+          slack_channel_webhook = Sys.getenv("TEST_WH"))
+
+```
+
+```{r Teaching, message=FALSE, warning=FALSE}
+post_comm(cat_id = 13,
+          from_day_ago = 0, 
+          duration_days = 4,
+          slack_channel_webhook = Sys.getenv("TEST_WH"))
+
+```
+
+```{r RStudio-Cloud, message=FALSE, warning=FALSE}
+post_comm(cat_id = 14,
+          from_day_ago = 0, 
+          duration_days = 4,
+          slack_channel_webhook = Sys.getenv("TEST_WH"))
+
+```
+
+```{r ML, message=FALSE, warning=FALSE}
+post_comm(cat_id = 15,
+          from_day_ago = 0, 
+          duration_days = 4,
+          slack_channel_webhook = Sys.getenv("TEST_WH"))
+
+```
+
+```{r General, message=FALSE, warning=FALSE}
+post_comm(cat_id = 17,
+          from_day_ago = 0, 
+          duration_days = 4,
+          slack_channel_webhook = Sys.getenv("TEST_WH"))
+
+```
+
+```{r R-Admin-Package-Management, message=FALSE, warning=FALSE}
+post_comm(cat_id = 21,
+          from_day_ago = 0, 
+          duration_days = 4,
+          slack_channel_webhook = Sys.getenv("TEST_WH"))
+
+```
+
+```{r shinyappsio, message=FALSE, warning=FALSE}
+post_comm(cat_id = 24,
+          from_day_ago = 0, 
+          duration_days = 4,
+          slack_channel_webhook = Sys.getenv("TEST_WH"))
+
+```
+
+```{r R-Admin-Connect, message=FALSE, warning=FALSE}
+post_comm(cat_id = 27,
+          from_day_ago = 0, 
+          duration_days = 4,
+          slack_channel_webhook = Sys.getenv("TEST_WH"))
+
+```
+
+```{r R-Admin-Training, message=FALSE, warning=FALSE}
+post_comm(cat_id = 12,
+          from_day_ago = 0, 
+          duration_days = 4,
+          slack_channel_webhook = Sys.getenv("TEST_WH"))
+
+```
